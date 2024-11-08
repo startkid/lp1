@@ -1,0 +1,66 @@
+package dyp;
+
+
+import java.util.Arrays;
+
+public class NextFitWorstFit {
+
+    // Next Fit Allocation
+    static void nextFit(int blockSize[], int m, int processSize[], int n) {
+        int allocation[] = new int[n], j = 0;
+        Arrays.fill(allocation, -1);
+
+        for (int i = 0; i < n; i++) {
+            int start = j;
+            while (true) {
+                if (blockSize[j] >= processSize[i]) {
+                    allocation[i] = j;
+                    blockSize[j] -= processSize[i];
+                    break;
+                }
+                j = (j + 1) % m;
+                if (j == start) break; // No fit found
+            }
+        }
+        displayResult("Next Fit", allocation, processSize);
+    }
+
+    // Worst Fit Allocation
+    static void worstFit(int blockSize[], int m, int processSize[], int n) {
+        int allocation[] = new int[n];
+        Arrays.fill(allocation, -1);
+
+        for (int i = 0; i < n; i++) {
+            int worstIdx = -1;
+            for (int j = 0; j < m; j++) {
+                if (blockSize[j] >= processSize[i]) {
+                    if (worstIdx == -1 || blockSize[worstIdx] < blockSize[j]) worstIdx = j;
+                }
+            }
+            if (worstIdx != -1) {
+                allocation[i] = worstIdx;
+                blockSize[worstIdx] -= processSize[i];
+            }
+        }
+        displayResult("Worst Fit", allocation, processSize);
+    }
+
+    static void displayResult(String method, int[] allocation, int[] processSize) {
+        System.out.println("\n" + method + " Allocation:");
+        System.out.println("Process No.\tProcess Size\tBlock no.");
+        for (int i = 0; i < allocation.length; i++) {
+            System.out.print(" " + (i + 1) + "\t\t" + processSize[i] + "\t\t");
+            System.out.println(allocation[i] != -1 ? (allocation[i] + 1) : "Not Allocated");
+        }
+    }
+
+    public static void main(String[] args) {
+        int blockSize[] = {100, 500, 200, 300, 600};
+        int processSize[] = {212, 417, 112, 426};
+        int m = blockSize.length;
+        int n = processSize.length;
+
+        nextFit(blockSize.clone(), m, processSize, n);
+        worstFit(blockSize.clone(), m, processSize, n);
+    }
+}

@@ -1,0 +1,101 @@
+package dyp;
+
+import java.util.Scanner;
+
+class Process {
+    int pid;
+    int arrivalTime;
+    int burstTime;
+    int waitingTime;
+    int turnAroundTime;
+    int completionTime = 0;
+    int timeToComplete;
+
+    Process(int pid, int arrival, int burst) {
+        this.pid = pid;
+        this.arrivalTime = arrival;
+        this.burstTime = burst;
+        this.timeToComplete = burst;
+    }
+}
+
+public class FCFS_SJF {
+    static Scanner s = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        System.out.println("Name: Ainakshi Jivan Hore    Roll No: TACO22103");
+
+        System.out.println("Enter the number of processes:");
+        int n = s.nextInt();
+        Process[] processes = new Process[n];
+        for (int i = 0; i < n; i++) {
+            System.out.println("Enter Arrival Time and Burst Time for Process " + (i + 1) + ":");
+            int arrival = s.nextInt();
+            int burst = s.nextInt();
+            processes[i] = new Process(i + 1, arrival, burst);
+        }
+
+        System.out.println("Choose the Scheduling Algorithm:");
+        System.out.println("1. FCFS");
+        System.out.println("2. SJF (Preemptive)");
+        int choice = s.nextInt();
+
+        switch (choice) {
+            case 1:
+                FCFS(processes);
+                break;
+            case 2:
+                SJF(processes);
+                break;
+            default:
+                System.out.println("Invalid Choice");
+        }
+        s.close();
+    }
+
+    static void FCFS(Process[] processes) {
+        int time = 0;
+        for (Process p : processes) {
+            if (time < p.arrivalTime) {
+                time = p.arrivalTime;
+            }
+            time += p.burstTime;
+            p.completionTime = time;
+            p.turnAroundTime = p.completionTime - p.arrivalTime;
+            p.waitingTime = p.turnAroundTime - p.burstTime;
+            displayProcess(p);
+        }
+    }
+
+    static void SJF(Process[] processes) {
+        int currentTime = 0, completed = 0;
+        while (completed < processes.length) {
+            Process shortest = null;
+            for (Process p : processes) {
+                if (p.timeToComplete > 0 && p.arrivalTime <= currentTime) {
+                    if (shortest == null || p.timeToComplete < shortest.timeToComplete) {
+                        shortest = p;
+                    }
+                }
+            }
+            if (shortest != null) {
+                shortest.timeToComplete--;
+                currentTime++;
+                if (shortest.timeToComplete == 0) {
+                    shortest.completionTime = currentTime;
+                    shortest.turnAroundTime = shortest.completionTime - shortest.arrivalTime;
+                    shortest.waitingTime = shortest.turnAroundTime - shortest.burstTime;
+                    displayProcess(shortest);
+                    completed++;
+                }
+            } else {
+                currentTime++;
+            }
+        }
+    }
+
+    static void displayProcess(Process p) {
+        System.out.println("Process " + p.pid + ":");
+        System.out.println("Turnaround Time: " + p.turnAroundTime + "\tCompletion Time: " + p.completionTime + "\tWaiting Time: " + p.waitingTime);
+    }
+}

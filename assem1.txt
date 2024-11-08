@@ -1,0 +1,253 @@
+package dyp.ass1;
+
+import java.io.*;
+import java.util.*;
+
+class Tuple {
+    String mnemonic, m_class, opcode;
+    int length;
+
+    Tuple() {}
+
+    Tuple(String s1, String s2, String s3, String s4) {
+        mnemonic = s1;
+        m_class = s2;
+        opcode = s3;
+        length = Integer.parseInt(s4);
+    }
+}
+
+class SymTuple {
+    String symbol, address;
+    int length;
+
+    SymTuple(String s1, String s2, int i1) {
+        symbol = s1;
+        address = s2;
+        length = i1;
+    }
+
+    @Override
+    public String toString() {
+        return symbol + "\t" + address;
+    }
+}
+
+class LitTuple {
+    String literal, address;
+    int length;
+
+    LitTuple() {}
+
+    LitTuple(String s1, String s2, int i1) {
+        literal = s1;
+        address = s2;
+        length = i1;
+    }
+
+    @Override
+    public String toString() {
+        return literal + "\t" + address;
+    }
+}
+
+public class Assembler_PassOne_V2 {
+    static int lc, iSymTabPtr = 0, iLitTabPtr = 0, iPoolTabPtr = 0;
+    static int[] poolTable = new int[10];
+    static Map<String, Tuple> MOT;
+    static Map<String, SymTuple> symtable;
+    static ArrayList<LitTuple> littable;
+    static Map<String, String> regAddressTable;
+    static PrintWriter out_pass1;
+    static int line_no;
+
+    static String processLTORG() {
+        LitTuple litTuple;
+        StringBuilder intermediateStr = new StringBuilder();
+        for (int i = poolTable[iPoolTabPtr - 1]; i < littable.size(); i++) {
+            litTuple = littable.get(i);
+            litTuple.address = lc + "";
+            intermediateStr.append(lc).append(" (DL,02)  (C,")
+                    .append(litTuple.literal).append(") \n");
+            lc++;
+        }
+        poolTable[iPoolTabPtr] = iLitTabPtr;
+        iPoolTabPtr++;
+        return intermediateStr.toString();
+    }
+
+    static void pass1() throws Exception {
+        BufferedReader input = new BufferedReader(new InputStreamReader(new
+                FileInputStream("src/dyp/ass1/INPUT")));
+        out_pass1 = new PrintWriter(new FileWriter("src/dyp/ass1/output_pass1"), true);
+        PrintWriter out_symtable = new PrintWriter(new FileWriter("src/dyp/ass1/Symtable"), true);
+        PrintWriter out_littable = new PrintWriter(new FileWriter("src/dyp/ass1/Littable"), true);
+        String s;
+     
+        lc = 0;
+        while ((s = input.readLine()) != null) {
+            StringTokenizer st = new StringTokenizer(s, " ");
+            if (!st.hasMoreTokens()) {
+                continue;  // Skip empty lines
+            }
+            String[] s_arr = new String[st.countTokens()];
+            for (int i = 0; st.hasMoreTokens(); i++) {
+                s_arr[i] = st.nextToken();
+            }
+
+            int curIndex = 0;
+            if (s_arr.length == 3) {  // Label exists
+                String label = s_arr[0];
+                insertIntoSymTab(label, lc + "");
+                curIndex = 1;
+            }
+
+            String curToken = s_arr[curIndex];
+            Tuple curTuple = MOT.get(curToken);
+            if (curTuple == null) {
+                System.err.println("Error: Invalid mnemonic: " + curToken);
+                continue;
+            }
+
+            StringBuilder intermediateStr = new StringBuilder();
+            if (curTuple.m_class.equalsIgnoreCase("IS")) {
+                intermediateStr.append(lc).append(" (")
+                        .append(curTuple.m_class).append(",")
+                        .append(curTuple.opcode).append(") ");
+                lc += curTuple.length;
+                intermediateStr.append(processOperands(s_arr[curIndex + 1]));
+            } else if (curTuple.m_class.equalsIgnoreCase("AD")) {
+                if (curTuple.mnemonic.equalsIgnoreCase("START")) {
+                    intermediateStr.append(lc).append(" (")
+                            .append(curTuple.m_class).append(",")
+                            .append(curTuple.opcode).append(") ");
+                    lc = Integer.parseInt(s_arr[curIndex + 1]);
+                    intermediateStr.append("(C,").append(s_arr[curIndex + 1]).append(") ");
+                } else if (curTuple.mnemonic.equalsIgnoreCase("LTORG")) {
+                    intermediateStr.append(processLTORG());
+                } else if (curTuple.mnemonic.equalsIgnoreCase("END")) {
+                    intermediateStr.append(lc).append(" (")
+                            .append(curTuple.m_class).append(",")
+                            .append(curTuple.opcode).append(")\n");
+                    intermediateStr.append(processLTORG());
+                }
+            } else if (curTuple.m_class.equalsIgnoreCase("DL")) {
+                intermediateStr.append(lc).append(" (")
+                        .append(curTuple.m_class).append(",")
+                        .append(curTuple.opcode).append(") ");
+                if (curTuple.mnemonic.equalsIgnoreCase("DS")) {
+                    lc += Integer.parseInt(s_arr[curIndex + 1]);
+                } else if (curTuple.mnemonic.equalsIgnoreCase("DC")) {
+                    lc += curTuple.length;
+                }
+                intermediateStr.append("(C,").append(s_arr[curIndex + 1]).append(") ");
+            }
+            System.out.println(intermediateStr);
+            out_pass1.println(intermediateStr);
+        }
+        out_pass1.flush();
+        out_pass1.close();
+
+        printTable(out_symtable, symtable.values(), "Symbol Table", SymTuple::toString);
+        printTable(out_littable, littable, "Literal Table", LitTuple::toString);
+    }
+
+    static String processOperands(String operands) {
+        StringTokenizer st = new StringTokenizer(operands, ",");
+        StringBuilder intermediateStr = new StringBuilder();
+        while (st.hasMoreTokens()) {
+            String curToken = st.nextToken();
+            if (curToken.startsWith("=")) {
+                String literal = curToken.substring(2, curToken.length() - 1);  // Extract literal
+                insertIntoTab(literal, "");
+                intermediateStr.append("(L,").append(iLitTabPtr - 1).append(") ");
+            } else if (regAddressTable.containsKey(curToken)) {
+                intermediateStr.append("(RG,").append(regAddressTable.get(curToken)).append(") ");
+            } else {
+                insertIntoSymTab(curToken, "");
+                intermediateStr.append("(S,").append(iSymTabPtr - 1).append(") ");
+            }
+        }
+        return intermediateStr.toString();
+    }
+
+    static void insertIntoSymTab(String symbol, String address) {
+        symtable.putIfAbsent(symbol, new SymTuple(symbol, address.isEmpty() ? lc + "" : address, 1));
+        iSymTabPtr++;
+    }
+
+    static void insertIntoTab(String literal, String address) {
+        littable.add(new LitTuple(literal, address, 1));
+        iLitTabPtr++;
+    }
+
+    static void initializeTables() throws Exception {
+        symtable = new LinkedHashMap<>();
+        littable = new ArrayList<>();
+        regAddressTable = new HashMap<>();
+        MOT = new HashMap<>();
+
+        BufferedReader br = new BufferedReader(new InputStreamReader(new
+                FileInputStream("src/dyp/ass1/MOT")));
+        String s;
+        while ((s = br.readLine()) != null) {
+            StringTokenizer st = new StringTokenizer(s, " ");
+            if (st.hasMoreTokens()) {
+                String mnemonic = st.nextToken();
+                MOT.put(mnemonic, new Tuple(mnemonic, st.nextToken(), st.nextToken(), st.nextToken()));
+            }
+        }
+        br.close();
+
+        regAddressTable.put("AREG", "1");
+        regAddressTable.put("BREG", "2");
+        regAddressTable.put("CREG", "3");
+        regAddressTable.put("DREG", "4");
+
+        poolTable[iPoolTabPtr] = iLitTabPtr;
+        iPoolTabPtr++;
+    }
+
+    static <T> void printTable(PrintWriter writer, Collection<T> table, String title, java.util.function.Function<T, String> toStringFn) {
+        System.out.println("==== " + title + " ====");
+        for (T entry : table) {
+            String entryStr = toStringFn.apply(entry);
+            System.out.println(entryStr);
+            writer.println(entryStr);
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    public static void main(String[] args) throws Exception {
+        initializeTables();
+        System.out.println("====== Pass 1 OUTPUT =====\n");
+        pass1();
+    }
+}
+input
+START    100 
+MOVER    AREG,B 
+ADD     BREG,='6' 
+MOVEM    AREG,A 
+SUB     CREG,='1' 
+LTORG 
+ADD     DREG,='5' 
+DS       10   
+LTORG 
+SUB     AREG,='1' 
+DC       1 
+DC       1 
+END
+
+mot
+START  AD 01 0 
+END    AD 02 0 
+LTORG  AD 05 0 
+ADD    IS 01 1 
+SUB    IS 02 1 
+MULT   IS 03 1 
+MOVER  IS 04 1 
+MOVEM  IS 05 1 
+DS     DL 01 0 
+DC     DL 02 1

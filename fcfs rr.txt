@@ -1,0 +1,95 @@
+package dyp;
+import java.util.Scanner;
+
+class Process {
+    int pid;
+    int waitingTime;
+    int arrivalTime;
+    int burstTime;
+    int turnAroundTime;
+    int timeToComplete;
+    int completionTime = 0;
+
+    Process(int pid, int arrival, int burst) {
+        this.pid = pid;
+        this.arrivalTime = arrival;
+        this.burstTime = burst;
+        this.timeToComplete = burstTime;
+    }
+}
+
+public class FCFSAndRoundRobin {
+    static Scanner s = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        System.out.println("Enter the number of processes:");
+        int n = s.nextInt();
+        Process[] myProcess = new Process[n];
+        for (int i = 0; i < n; i++) {
+            System.out.println("Enter Arrival time and Burst Time: ");
+            int arrival = s.nextInt();
+            int burst = s.nextInt();
+            myProcess[i] = new Process(i + 1, arrival, burst);
+        }
+
+        System.out.println("Select the scheduling algorithm:");
+        System.out.println("1. FCFS");
+        System.out.println("2. Round Robin (Preemptive)");
+        int choice = s.nextInt();
+
+        if (choice == 1) {
+            FCFS(myProcess);
+        } else if (choice == 2) {
+            RoundRobin(myProcess);
+        } else {
+            System.out.println("Incorrect choice");
+        }
+    }
+
+    static void FCFS(Process[] myProcess) {
+        int time = 0;
+        for (Process p : myProcess) {
+            time += p.burstTime;
+            p.completionTime = time;
+            p.turnAroundTime = p.completionTime - p.arrivalTime;
+            p.waitingTime = p.turnAroundTime - p.burstTime;
+        }
+        printResults(myProcess);
+    }
+
+    static void RoundRobin(Process[] myProcess) {
+        System.out.println("Specify time quantum: ");
+        int quantum = s.nextInt();
+
+        int curTimeInterval = 0, completedProcesses = 0;
+
+        while (completedProcesses < myProcess.length) {
+            for (Process p : myProcess) {
+                if (p.timeToComplete > 0) {
+                    if (p.timeToComplete > quantum) {
+                        curTimeInterval += quantum;
+                        p.timeToComplete -= quantum;
+                    } else {
+                        curTimeInterval += p.timeToComplete;
+                        p.timeToComplete = 0;
+                        p.completionTime = curTimeInterval;
+                        p.turnAroundTime = p.completionTime - p.arrivalTime;
+                        p.waitingTime = p.turnAroundTime - p.burstTime;
+                        completedProcesses++;
+                    }
+                }
+            }
+        }
+
+        printResults(myProcess);
+    }
+
+    static void printResults(Process[] myProcess) {
+        for (Process p : myProcess) {
+            System.out.println("Process " + p.pid + ":");
+            System.out.println("Turnaround Time: " + p.turnAroundTime);
+            System.out.println("Completion Time: " + p.completionTime);
+            System.out.println("Waiting Time: " + p.waitingTime);
+        }
+    }
+}

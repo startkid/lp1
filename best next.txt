@@ -1,0 +1,83 @@
+package dyp;
+
+import java.util.Arrays;
+
+public class BestFitNextFit {
+
+    // Best Fit Algorithm
+    static void bestFit(int blockSize[], int m, int processSize[], int n) {
+        int allocation[] = new int[n];
+        Arrays.fill(allocation, -1);
+
+        for (int i = 0; i < n; i++) {
+            int bestIdx = -1;
+            for (int j = 0; j < m; j++) {
+                if (blockSize[j] >= processSize[i]) {
+                    if (bestIdx == -1 || blockSize[bestIdx] > blockSize[j]) {
+                        bestIdx = j;
+                    }
+                }
+            }
+            if (bestIdx != -1) {
+                allocation[i] = bestIdx;
+                blockSize[bestIdx] -= processSize[i];
+            }
+        }
+
+        System.out.println("Best Fit Allocation:");
+        System.out.println("Process No.\tProcess Size\tBlock No.");
+        for (int i = 0; i < n; i++) {
+            System.out.print("   " + (i + 1) + "\t\t" + processSize[i] + "\t\t");
+            if (allocation[i] != -1)
+                System.out.print(allocation[i] + 1);
+            else
+                System.out.print("Not Allocated");
+            System.out.println();
+        }
+    }
+
+    // Next Fit Algorithm
+    static void nextFit(int blockSize[], int m, int processSize[], int n) {
+        int allocation[] = new int[n];
+        Arrays.fill(allocation, -1);
+        int j = 0;
+
+        for (int i = 0; i < n; i++) {
+            while (j < m) {
+                if (blockSize[j] >= processSize[i]) {
+                    allocation[i] = j;
+                    blockSize[j] -= processSize[i];
+                    j = (j + 1) % m;  // Move to the next block in a circular way
+                    break;
+                }
+                j = (j + 1) % m;
+            }
+        }
+
+        System.out.println("\nNext Fit Allocation:");
+        System.out.println("Process No.\tProcess Size\tBlock No.");
+        for (int i = 0; i < n; i++) {
+            System.out.print(i + 1 + "\t\t" + processSize[i] + "\t\t");
+            if (allocation[i] != -1) {
+                System.out.print(allocation[i] + 1);
+            } else {
+                System.out.print("Not Allocated");
+            }
+            System.out.println();
+        }
+    }
+
+    public static void main(String[] args) {
+        int originalBlockSize[] = {5, 10, 20};
+        int processSize[] = {10, 20, 5};
+        int m = originalBlockSize.length;
+        int n = processSize.length;
+
+        // Copy the original block sizes for each method to prevent modification
+        int[] blockSizeForBestFit = Arrays.copyOf(originalBlockSize, m);
+        int[] blockSizeForNextFit = Arrays.copyOf(originalBlockSize, m);
+
+        bestFit(blockSizeForBestFit, m, processSize, n);
+        nextFit(blockSizeForNextFit, m, processSize, n);
+    }
+}
